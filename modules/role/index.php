@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/auth_check.php';
+requirePermission('role', 'view');
 
 $pageTitle = 'Roles';
 $breadcrumb = [
@@ -11,7 +12,6 @@ $breadcrumb = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
-requirePermission('role', 'view');
 
 // Handle delete action
 if (isset($_GET['delete']) && hasPermission('role', 'delete')) {

@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/auth_check.php';
+requirePermission('export', 'view');
 
 $pageTitle = 'Export PDF';
 $breadcrumb = [
@@ -11,7 +12,6 @@ $breadcrumb = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
-requirePermission('export', 'view');
 
 // Get institutions
 $institutions = getInstitutions('active');

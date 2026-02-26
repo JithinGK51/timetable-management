@@ -70,8 +70,17 @@ function requireAuth() {
 function requirePermission($module, $action = 'view') {
     requireAuth();
     if (!hasPermission($module, $action)) {
-        header('HTTP/1.1 403 Forbidden');
-        die('Access Denied: You do not have permission to perform this action.');
+        // Store alert in session and redirect to dashboard
+        $_SESSION['alert'] = [
+            'message' => 'You do not have permission to access this feature.',
+            'type' => 'error'
+        ];
+        if (!headers_sent()) {
+            header('Location: /ttc/modules/dashboard/index.php');
+        } else {
+            echo '<script>window.location.href = "/ttc/modules/dashboard/index.php";</script>';
+        }
+        exit;
     }
 }
 
@@ -86,6 +95,8 @@ function login($username, $password, $remember = false) {
         $_SESSION['admin_name'] = $admin['name'];
         $_SESSION['admin_username'] = $admin['username'];
         $_SESSION['is_super_admin'] = $admin['is_super_admin'];
+        $_SESSION['role_id'] = $admin['role_id'];
+        $_SESSION['institution_id'] = $admin['institution_id'];
         
         // Update last login
         dbQuery("UPDATE admins SET last_login = NOW() WHERE id = ?", [$admin['id']]);
@@ -185,14 +196,23 @@ function getDaysOfWeek() {
 // ============================================
 
 function getDashboardStats() {
+    // Check if user is sub-admin (has institution_id but not super admin)
+    $institutionFilter = '';
+    $params = [];
+    
+    if (isset($_SESSION['institution_id']) && $_SESSION['institution_id'] && !isSuperAdmin()) {
+        $institutionFilter = " AND institution_id = ?";
+        $params = [$_SESSION['institution_id']];
+    }
+    
     return [
-        'total_teachers' => dbFetch("SELECT COUNT(*) as count FROM teachers WHERE status = 'active'")['count'],
-        'active_teachers' => dbFetch("SELECT COUNT(*) as count FROM teachers WHERE status = 'active'")['count'],
-        'total_classes' => dbFetch("SELECT COUNT(*) as count FROM classes WHERE status = 'active'")['count'],
-        'total_sections' => dbFetch("SELECT COUNT(*) as count FROM sections WHERE status = 'active'")['count'],
-        'total_subjects' => dbFetch("SELECT COUNT(*) as count FROM subjects WHERE status = 'active'")['count'],
-        'timetables_generated' => dbFetch("SELECT COUNT(*) as count FROM timetables")['count'],
-        'timetables_published' => dbFetch("SELECT COUNT(*) as count FROM timetables WHERE status = 'published'")['count']
+        'total_teachers' => dbFetch("SELECT COUNT(*) as count FROM teachers WHERE status = 'active'" . $institutionFilter, $params)['count'] ?? 0,
+        'active_teachers' => dbFetch("SELECT COUNT(*) as count FROM teachers WHERE status = 'active'" . $institutionFilter, $params)['count'] ?? 0,
+        'total_classes' => dbFetch("SELECT COUNT(*) as count FROM classes WHERE status = 'active'" . $institutionFilter, $params)['count'] ?? 0,
+        'total_sections' => dbFetch("SELECT COUNT(*) as count FROM sections s JOIN classes c ON s.class_id = c.id WHERE s.status = 'active'" . ($institutionFilter ? " AND c.institution_id = ?" : ""), $params)['count'] ?? 0,
+        'total_subjects' => dbFetch("SELECT COUNT(*) as count FROM subjects WHERE status = 'active'" . $institutionFilter, $params)['count'] ?? 0,
+        'timetables_generated' => dbFetch("SELECT COUNT(*) as count FROM timetables WHERE 1=1" . $institutionFilter, $params)['count'] ?? 0,
+        'timetables_published' => dbFetch("SELECT COUNT(*) as count FROM timetables WHERE status = 'published'" . $institutionFilter, $params)['count'] ?? 0
     ];
 }
 

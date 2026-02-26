@@ -77,8 +77,8 @@ $breadcrumb = [
     ['label' => 'Grid View']
 ];
 
-require_once __DIR__ . '/../../includes/header.php';
 requirePermission('timetable', 'view');
+require_once __DIR__ . '/../../includes/header.php';
 
 $timetableId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -109,9 +109,9 @@ $events = dbFetchAll("SELECT id, title, type, start_date FROM events WHERE insti
 // Debug: log event count
 error_log('Events found for institution ' . $timetable['institution_id'] . ': ' . count($events));
 
-// Filter active working days and class slots
+// Filter active working days and all slots (including break/lunch)
 $activeDays = array_filter($workingDays, function($d) { return $d['is_working']; });
-$classSlots = array_filter($timeSlots, function($s) { return !$s['is_break'] && !$s['is_lunch']; });
+$classSlots = $timeSlots; // Include all slots including break and lunch
 
 // Build entries grid for easy lookup
 $entryGrid = [];
@@ -169,8 +169,16 @@ $canEdit = hasPermission('timetable', 'edit') && $timetable['status'] !== 'publi
                 <tr>
                     <th style="width: 100px;">Day / Period</th>
                     <?php foreach ($classSlots as $slot): ?>
-                        <th style="text-align: center; min-width: 120px;">
-                            <div>Period <?php echo $slot['period_number']; ?></div>
+                        <th style="text-align: center; min-width: 120px; <?php echo $slot['is_break'] ? 'background: #e3f2fd;' : ($slot['is_lunch'] ? 'background: #fff3e0;' : ''); ?>">
+                            <div>
+                                <?php if ($slot['is_break']): ?>
+                                    <i class="fas fa-coffee"></i> Break
+                                <?php elseif ($slot['is_lunch']): ?>
+                                    <i class="fas fa-utensils"></i> Lunch
+                                <?php else: ?>
+                                    Period <?php echo $slot['period_number']; ?>
+                                <?php endif; ?>
+                            </div>
                             <small style="color: var(--text-light); font-weight: normal;">
                                 <?php echo formatTime($slot['start_time']); ?> - <?php echo formatTime($slot['end_time']); ?>
                             </small>
@@ -188,52 +196,71 @@ $canEdit = hasPermission('timetable', 'edit') && $timetable['status'] !== 'publi
                             $key = $day['day_of_week'] . '_' . $slot['id'];
                             $entry = isset($entryGrid[$key]) ? $entryGrid[$key] : null;
                         ?>
-                            <td style="padding: 8px; vertical-align: top; height: 80px;">
-                                <?php if ($entry): 
-                                    $subject = $subjectsMap[$entry['subject_id']] ?? null;
-                                    $teacher = $teachersMap[$entry['teacher_id']] ?? null;
-                                ?>
-                                    <?php if (!empty($entry['is_event'])): ?>
-                                        <!-- Event/Holiday Entry -->
-                                        <div class="timetable-entry" 
-                                             style="cursor: <?php echo $canEdit ? 'pointer' : 'default'; ?>; background: #fff3cd; border-color: #ffc107;"
-                                             <?php if ($canEdit): ?>onclick="editEntry('<?php echo $day['day_of_week']; ?>', <?php echo $slot['id']; ?>)"<?php endif; ?>>
-                                            <div class="subject" style="color: #856404; font-weight: 600;">
-                                                <i class="fas fa-calendar-star"></i> 
-                                                <?php echo htmlspecialchars($entry['event_name']); ?>
-                                            </div>
-                                            <small style="color: #856404; text-transform: uppercase;">
-                                                <?php echo htmlspecialchars($entry['event_type']); ?>
-                                            </small>
-                                        </div>
-                                    <?php else: ?>
-                                        <!-- Regular Class Entry -->
-                                        <div class="timetable-entry" 
-                                             style="cursor: <?php echo $canEdit ? 'pointer' : 'default'; ?>;"
-                                             <?php if ($canEdit): ?>onclick="editEntry('<?php echo $day['day_of_week']; ?>', <?php echo $slot['id']; ?>)"<?php endif; ?>>
-                                            <div class="subject"><?php echo $subject ? htmlspecialchars($subject['name']) : 'Unknown'; ?></div>
-                                            <?php if ($teacher): ?>
-                                                <div class="teacher">
-                                                    <i class="fas fa-chalkboard-teacher"></i> 
-                                                    <?php echo htmlspecialchars($teacher['name']); ?>
+                            <?php if ($slot['is_break']): ?>
+                                <!-- Break Slot -->
+                                <td style="padding: 8px; vertical-align: middle; height: 80px; background: #e3f2fd; text-align: center;">
+                                    <div style="color: #1976d2; font-weight: 600;">
+                                        <i class="fas fa-coffee" style="font-size: 20px;"></i><br>
+                                        <small>BREAK</small>
+                                    </div>
+                                </td>
+                            <?php elseif ($slot['is_lunch']): ?>
+                                <!-- Lunch Slot -->
+                                <td style="padding: 8px; vertical-align: middle; height: 80px; background: #fff3e0; text-align: center;">
+                                    <div style="color: #f57c00; font-weight: 600;">
+                                        <i class="fas fa-utensils" style="font-size: 20px;"></i><br>
+                                        <small>LUNCH</small>
+                                    </div>
+                                </td>
+                            <?php else: ?>
+                                <!-- Regular Class Slot -->
+                                <td style="padding: 8px; vertical-align: top; height: 80px;">
+                                    <?php if ($entry): 
+                                        $subject = $subjectsMap[$entry['subject_id']] ?? null;
+                                        $teacher = $teachersMap[$entry['teacher_id']] ?? null;
+                                    ?>
+                                        <?php if (!empty($entry['is_event'])): ?>
+                                            <!-- Event/Holiday Entry -->
+                                            <div class="timetable-entry" 
+                                                 style="cursor: <?php echo $canEdit ? 'pointer' : 'default'; ?>; background: #fff3cd; border-color: #ffc107;"
+                                                 <?php if ($canEdit): ?>onclick="editEntry('<?php echo $day['day_of_week']; ?>', <?php echo $slot['id']; ?>)"<?php endif; ?>>
+                                                <div class="subject" style="color: #856404; font-weight: 600;">
+                                                    <i class="fas fa-calendar-star"></i> 
+                                                    <?php echo htmlspecialchars($entry['event_name']); ?>
                                                 </div>
-                                            <?php endif; ?>
-                                            <?php if ($entry['is_override']): ?>
-                                                <small style="color: var(--warning-color);"><i class="fas fa-hand-pointer"></i> Manual</small>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                <?php else: ?>
-                                    <?php if ($canEdit): ?>
-                                        <button type="button" class="btn btn-sm btn-secondary" style="width: 100%; height: 60px; border: 2px dashed var(--border-color); background: transparent; color: var(--text-light);"
-                                                onclick="editEntry('<?php echo $day['day_of_week']; ?>', <?php echo $slot['id']; ?>)">
-                                            <i class="fas fa-plus"></i> Add
-                                        </button>
+                                                <small style="color: #856404; text-transform: uppercase;">
+                                                    <?php echo htmlspecialchars($entry['event_type']); ?>
+                                                </small>
+                                            </div>
+                                        <?php else: ?>
+                                            <!-- Regular Class Entry -->
+                                            <div class="timetable-entry" 
+                                                 style="cursor: <?php echo $canEdit ? 'pointer' : 'default'; ?>;"
+                                                 <?php if ($canEdit): ?>onclick="editEntry('<?php echo $day['day_of_week']; ?>', <?php echo $slot['id']; ?>)"<?php endif; ?>>
+                                                <div class="subject"><?php echo $subject ? htmlspecialchars($subject['name']) : 'Unknown'; ?></div>
+                                                <?php if ($teacher): ?>
+                                                    <div class="teacher">
+                                                        <i class="fas fa-chalkboard-teacher"></i> 
+                                                        <?php echo htmlspecialchars($teacher['name']); ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if ($entry['is_override']): ?>
+                                                    <small style="color: var(--warning-color);"><i class="fas fa-hand-pointer"></i> Manual</small>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     <?php else: ?>
-                                        <div style="text-align: center; color: var(--text-light); padding: 15px;">-</div>
+                                        <?php if ($canEdit): ?>
+                                            <button type="button" class="btn btn-sm btn-secondary" style="width: 100%; height: 60px; border: 2px dashed var(--border-color); background: transparent; color: var(--text-light);"
+                                                    onclick="editEntry('<?php echo $day['day_of_week']; ?>', <?php echo $slot['id']; ?>)">
+                                                <i class="fas fa-plus"></i> Add
+                                            </button>
+                                        <?php else: ?>
+                                            <div style="text-align: center; color: var(--text-light); padding: 15px;">-</div>
+                                        <?php endif; ?>
                                     <?php endif; ?>
-                                <?php endif; ?>
-                            </td>
+                                </td>
+                            <?php endif; ?>
                         <?php endforeach; ?>
                     </tr>
                 <?php endforeach; ?>

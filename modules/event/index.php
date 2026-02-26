@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/auth_check.php';
+requirePermission('event', 'view');
 
 $pageTitle = 'Events & Holidays';
 $breadcrumb = [
@@ -11,7 +12,6 @@ $breadcrumb = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
-requirePermission('event', 'view');
 
 // Handle delete action
 if (isset($_GET['delete']) && hasPermission('event', 'delete')) {

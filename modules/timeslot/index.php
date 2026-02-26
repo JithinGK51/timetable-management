@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/auth_check.php';
+requirePermission('timeslot', 'view');
 
 $pageTitle = 'Time Slots';
 $breadcrumb = [
@@ -11,7 +12,6 @@ $breadcrumb = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
-requirePermission('timeslot', 'view');
 
 // Get institution filter
 $institutionId = isset($_GET['institution']) ? intval($_GET['institution']) : 0;

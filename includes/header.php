@@ -45,33 +45,48 @@ $alert = getAlert();
                     <span>Dashboard</span>
                 </a>
                 
+                <?php if (hasPermission('institution', 'view')): ?>
                 <div class="menu-category">Academic</div>
+                <?php if (isSuperAdmin()): ?>
                 <a href="/ttc/modules/institution/index.php" class="menu-item <?php echo $currentPage === 'institution' ? 'active' : ''; ?>">
                     <i class="fas fa-university"></i>
                     <span>Institutions</span>
                 </a>
+                <?php endif; ?>
+                <?php if (hasPermission('class', 'view')): ?>
                 <a href="/ttc/modules/class/index.php" class="menu-item <?php echo $currentPage === 'class' ? 'active' : ''; ?>">
                     <i class="fas fa-graduation-cap"></i>
                     <span>Classes</span>
                 </a>
+                <?php endif; ?>
+                <?php if (hasPermission('section', 'view')): ?>
                 <a href="/ttc/modules/section/index.php" class="menu-item <?php echo $currentPage === 'section' ? 'active' : ''; ?>">
                     <i class="fas fa-users"></i>
                     <span>Sections</span>
                 </a>
+                <?php endif; ?>
+                <?php if (hasPermission('subject', 'view')): ?>
                 <a href="/ttc/modules/subject/index.php" class="menu-item <?php echo $currentPage === 'subject' ? 'active' : ''; ?>">
                     <i class="fas fa-book"></i>
                     <span>Subjects</span>
                 </a>
+                <?php endif; ?>
+                <?php if (hasPermission('teacher', 'view')): ?>
                 <a href="/ttc/modules/teacher/index.php" class="menu-item <?php echo $currentPage === 'teacher' ? 'active' : ''; ?>">
                     <i class="fas fa-chalkboard-teacher"></i>
                     <span>Teachers</span>
                 </a>
+                <?php endif; ?>
+                <?php endif; ?>
                 
+                <?php if (hasPermission('timetable', 'view')): ?>
                 <div class="menu-category">Timetable</div>
+                <?php if (hasPermission('timeslot', 'view')): ?>
                 <a href="/ttc/modules/timeslot/index.php" class="menu-item <?php echo $currentPage === 'timeslot' ? 'active' : ''; ?>">
                     <i class="fas fa-clock"></i>
                     <span>Time Slots</span>
                 </a>
+                <?php endif; ?>
                 <a href="/ttc/modules/timetable/create.php" class="menu-item <?php echo $currentPage === 'timetable' && $currentFile === 'create' ? 'active' : ''; ?>">
                     <i class="fas fa-plus-circle"></i>
                     <span>Create Timetable</span>
@@ -80,16 +95,21 @@ $alert = getAlert();
                     <i class="fas fa-calendar-alt"></i>
                     <span>View Timetables</span>
                 </a>
+                <?php if (hasPermission('event', 'view')): ?>
                 <a href="/ttc/modules/event/index.php" class="menu-item <?php echo $currentPage === 'event' ? 'active' : ''; ?>">
                     <i class="fas fa-calendar-day"></i>
                     <span>Events & Holidays</span>
                 </a>
+                <?php endif; ?>
+                <?php endif; ?>
                 
+                <?php if (hasPermission('export', 'view')): ?>
                 <div class="menu-category">Reports</div>
                 <a href="/ttc/modules/export/index.php" class="menu-item <?php echo $currentPage === 'export' ? 'active' : ''; ?>">
                     <i class="fas fa-file-pdf"></i>
                     <span>Export PDF</span>
                 </a>
+                <?php endif; ?>
                 
                 <?php if (isSuperAdmin()): ?>
                 <div class="menu-category">Administration</div>

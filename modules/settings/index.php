@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/auth_check.php';
+requirePermission('settings', 'edit');
 
 $pageTitle = 'Settings';
 $breadcrumb = [
@@ -11,7 +12,6 @@ $breadcrumb = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
-requirePermission('settings', 'edit');
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

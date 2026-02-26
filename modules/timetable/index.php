@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/auth_check.php';
+requirePermission('timetable', 'view');
 
 $pageTitle = 'Timetables';
 $breadcrumb = [
@@ -11,7 +12,6 @@ $breadcrumb = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
-requirePermission('timetable', 'view');
 
 // Handle delete
 if (isset($_GET['delete']) && hasPermission('timetable', 'delete')) {

@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/auth_check.php';
+requirePermission('timetable', 'create');
 
 $pageTitle = 'Create Timetable';
 $breadcrumb = [
@@ -12,7 +13,6 @@ $breadcrumb = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
-requirePermission('timetable', 'create');
 
 $step = isset($_GET['step']) ? intval($_GET['step']) : 1;
 $institutionId = isset($_SESSION['timetable_institution']) ? $_SESSION['timetable_institution'] : 0;

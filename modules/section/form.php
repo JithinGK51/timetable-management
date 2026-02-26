@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/auth_check.php';
+requirePermission('section', isset($_GET['id']) ? 'edit' : 'create');
 
 $pageTitle = isset($_GET['id']) ? 'Edit Section' : 'Add Section';
 $breadcrumb = [
@@ -12,7 +13,6 @@ $breadcrumb = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
-requirePermission('section', isset($_GET['id']) ? 'edit' : 'create');
 
 $section = [
     'id' => '',

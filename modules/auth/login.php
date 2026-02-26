@@ -57,6 +57,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($dbError)) {
                 $_SESSION['admin_name'] = $admin['name'];
                 $_SESSION['admin_username'] = $admin['username'];
                 $_SESSION['is_super_admin'] = $admin['is_super_admin'];
+                $_SESSION['role_id'] = $admin['role_id'];
+                $_SESSION['institution_id'] = $admin['institution_id'];
                 
                 // Update last login
                 dbQuery("UPDATE admins SET last_login = NOW() WHERE id = ?", [$admin['id']]);

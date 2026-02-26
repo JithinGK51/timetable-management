@@ -4,6 +4,7 @@
  */
 
 require_once __DIR__ . '/../../includes/auth_check.php';
+requirePermission('subject', 'view');
 
 $pageTitle = 'Subjects';
 $breadcrumb = [
@@ -11,7 +12,6 @@ $breadcrumb = [
 ];
 
 require_once __DIR__ . '/../../includes/header.php';
-requirePermission('subject', 'view');
 
 // Handle delete
 if (isset($_GET['delete']) && hasPermission('subject', 'delete')) {
