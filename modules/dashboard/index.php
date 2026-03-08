@@ -26,9 +26,6 @@ $today = date('l');
         <p class="page-subtitle">Welcome back, <?php echo htmlspecialchars($currentAdmin['name']); ?>! Here's what's happening today.</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="/ttc/modules/timetable/create_day.php" class="btn btn-info" title="Create timetable for multiple sections on a single day">
-            <i class="fas fa-calendar-day"></i> Single Day
-        </a>
         <a href="/ttc/modules/timetable/create.php" class="btn btn-primary">
             <i class="fas fa-plus"></i> Create Timetable
         </a>

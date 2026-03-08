@@ -45,6 +45,10 @@ function confirmDelete(message) {
     return confirm(message || 'Are you sure you want to delete this item? This action cannot be undone.');
 }
 
+function confirmPermanentDelete(message) {
+    return confirm(message || 'WARNING: This will permanently delete the item and all associated data. This action CANNOT be undone. Are you sure?');
+}
+
 function confirmAction(message) {
     return confirm(message || 'Are you sure you want to proceed?');
 }
