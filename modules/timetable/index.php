@@ -66,11 +66,16 @@ $timetables = dbFetchAll($sql, $params);
         <h1 class="page-title">Timetables</h1>
         <p class="page-subtitle">Manage and view generated timetables</p>
     </div>
-    <?php if (hasPermission('timetable', 'create')): ?>
-        <a href="create.php" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Create Timetable
-        </a>
-    <?php endif; ?>
+    <div style="display: flex; gap: 10px;">
+        <?php if (hasPermission('timetable', 'create')): ?>
+            <a href="create_day.php" class="btn btn-success" title="Create timetable for multiple sections on a single day">
+                <i class="fas fa-calendar-day"></i> Single Day
+            </a>
+            <a href="create.php" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create Timetable
+            </a>
+        <?php endif; ?>
+    </div>
 </div>
 
 <div class="card">
