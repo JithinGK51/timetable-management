@@ -13,7 +13,7 @@ $breadcrumb = [
 
 require_once __DIR__ . '/../../includes/header.php';
 
-// Handle delete
+// Handle archive (soft delete)
 if (isset($_GET['delete']) && hasPermission('timetable', 'delete')) {
     $id = intval($_GET['delete']);
     dbQuery("UPDATE timetables SET status = 'archived' WHERE id = ?", [$id]);
@@ -29,9 +29,35 @@ if (isset($_GET['publish']) && hasPermission('timetable', 'edit')) {
     redirect('/ttc/modules/timetable/index.php');
 }
 
+// Handle recover (restore from archived)
+if (isset($_GET['recover']) && hasPermission('timetable', 'edit')) {
+    $id = intval($_GET['recover']);
+    dbQuery("UPDATE timetables SET status = 'draft' WHERE id = ?", [$id]);
+    showAlert('Timetable recovered successfully', 'success');
+    redirect('/ttc/modules/timetable/index.php?view=archived');
+}
+
+// Handle permanent delete
+if (isset($_GET['permanent_delete']) && hasPermission('timetable', 'delete')) {
+    $id = intval($_GET['permanent_delete']);
+    
+    // Delete timetable entries first (foreign key constraint)
+    dbQuery("DELETE FROM timetable_entries WHERE timetable_id = ?", [$id]);
+    
+    // Delete timetable versions
+    dbQuery("DELETE FROM timetable_versions WHERE timetable_id = ?", [$id]);
+    
+    // Delete the timetable
+    dbQuery("DELETE FROM timetables WHERE id = ?", [$id]);
+    
+    showAlert('Timetable permanently deleted', 'success');
+    redirect('/ttc/modules/timetable/index.php?view=archived');
+}
+
 // Get filters
 $institutionFilter = isset($_GET['institution']) ? intval($_GET['institution']) : 0;
 $statusFilter = isset($_GET['status']) ? $_GET['status'] : '';
+$viewArchived = isset($_GET['view']) && $_GET['view'] === 'archived';
 
 // Get institutions
 $institutions = getInstitutions('active');
@@ -44,8 +70,15 @@ $sql = "SELECT t.*, i.name as institution_name, c.name as class_name, s.name as 
         JOIN classes c ON t.class_id = c.id
         JOIN sections s ON t.section_id = s.id
         JOIN admins a ON t.created_by = a.id
-        WHERE t.status != 'archived'";
+        WHERE 1=1";
 $params = [];
+
+// Filter by archived status
+if ($viewArchived) {
+    $sql .= " AND t.status = 'archived'";
+} else {
+    $sql .= " AND t.status != 'archived'";
+}
 
 if ($institutionFilter) {
     $sql .= " AND t.institution_id = ?";
@@ -63,16 +96,22 @@ $timetables = dbFetchAll($sql, $params);
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Timetables</h1>
-        <p class="page-subtitle">Manage and view generated timetables</p>
+        <h1 class="page-title"><?php echo $viewArchived ? 'Archived Timetables' : 'Timetables'; ?></h1>
+        <p class="page-subtitle"><?php echo $viewArchived ? 'View and recover deleted timetables' : 'Manage and view generated timetables'; ?></p>
     </div>
-    <div style="display: flex; gap: 10px;">
-        <?php if (hasPermission('timetable', 'create')): ?>
-            <a href="create_day.php" class="btn btn-success" title="Create timetable for multiple sections on a single day">
-                <i class="fas fa-calendar-day"></i> Single Day
+    <div class="d-flex gap-2">
+        <?php if ($viewArchived): ?>
+            <a href="index.php" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Timetables
             </a>
-            <a href="create.php" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Create Timetable
+        <?php else: ?>
+            <?php if (hasPermission('timetable', 'create')): ?>
+                <a href="create.php" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Timetable
+                </a>
+            <?php endif; ?>
+            <a href="index.php?view=archived" class="btn btn-secondary">
+                <i class="fas fa-archive"></i> View Archived
             </a>
         <?php endif; ?>
     </div>
@@ -92,6 +131,7 @@ $timetables = dbFetchAll($sql, $params);
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?php if (!$viewArchived): ?>
             <div class="filter-group">
                 <label>Status:</label>
                 <select class="form-control" onchange="window.location.href='?institution=<?php echo $institutionFilter; ?>&status='+this.value">
@@ -100,15 +140,16 @@ $timetables = dbFetchAll($sql, $params);
                     <option value="published" <?php echo $statusFilter === 'published' ? 'selected' : ''; ?>>Published</option>
                 </select>
             </div>
+            <?php endif; ?>
         </div>
     </div>
     <div class="card-body">
         <?php if (empty($timetables)): ?>
             <div class="empty-state">
                 <div class="empty-state-icon">&#128197;</div>
-                <h3>No Timetables Found</h3>
-                <p>Create your first timetable to get started.</p>
-                <?php if (hasPermission('timetable', 'create')): ?>
+                <h3><?php echo $viewArchived ? 'No Archived Timetables' : 'No Timetables Found'; ?></h3>
+                <p><?php echo $viewArchived ? 'There are no archived timetables in the system.' : 'Create your first timetable to get started.'; ?></p>
+                <?php if (!$viewArchived && hasPermission('timetable', 'create')): ?>
                     <a href="create.php" class="btn btn-primary">Create Timetable</a>
                 <?php endif; ?>
             </div>
@@ -123,7 +164,7 @@ $timetables = dbFetchAll($sql, $params);
                             <th>Version</th>
                             <th>Status</th>
                             <th>Created By</th>
-                            <th>Modified</th>
+                            <th><?php echo $viewArchived ? 'Archived On' : 'Modified'; ?></th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -149,20 +190,33 @@ $timetables = dbFetchAll($sql, $params);
                                         <a href="grid.php?id=<?php echo $timetable['id']; ?>" class="action-btn view" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <?php if ($timetable['status'] !== 'published' && hasPermission('timetable', 'edit')): ?>
-                                            <a href="create.php?edit=<?php echo $timetable['id']; ?>" class="action-btn edit" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                        <?php endif; ?>
-                                        <?php if ($timetable['status'] === 'draft' && hasPermission('timetable', 'edit')): ?>
-                                            <a href="?publish=<?php echo $timetable['id']; ?>" class="action-btn view" title="Publish" onclick="return confirmAction('Publish this timetable?');">
-                                                <i class="fas fa-check"></i>
-                                            </a>
-                                        <?php endif; ?>
-                                        <?php if (hasPermission('timetable', 'delete')): ?>
-                                            <a href="?delete=<?php echo $timetable['id']; ?>" class="action-btn delete" title="Archive" onclick="return confirmDelete();">
-                                                <i class="fas fa-archive"></i>
-                                            </a>
+                                        <?php if ($viewArchived): ?>
+                                            <?php if (hasPermission('timetable', 'edit')): ?>
+                                                <a href="?recover=<?php echo $timetable['id']; ?>" class="action-btn edit" title="Recover" onclick="return confirmAction('Recover this timetable? It will be restored as a draft.');">
+                                                    <i class="fas fa-trash-restore"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if (hasPermission('timetable', 'delete')): ?>
+                                                <a href="?permanent_delete=<?php echo $timetable['id']; ?>" class="action-btn delete" title="Delete Permanently" onclick="return confirmDelete('Are you sure you want to permanently delete this timetable? This action cannot be undone.');">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <?php if ($timetable['status'] !== 'published' && hasPermission('timetable', 'edit')): ?>
+                                                <a href="create.php?edit=<?php echo $timetable['id']; ?>" class="action-btn edit" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if ($timetable['status'] === 'draft' && hasPermission('timetable', 'edit')): ?>
+                                                <a href="?publish=<?php echo $timetable['id']; ?>" class="action-btn view" title="Publish" onclick="return confirmAction('Publish this timetable?');">
+                                                    <i class="fas fa-check"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                            <?php if (hasPermission('timetable', 'delete')): ?>
+                                                <a href="?delete=<?php echo $timetable['id']; ?>" class="action-btn delete" title="Archive" onclick="return confirmDelete();">
+                                                    <i class="fas fa-archive"></i>
+                                                </a>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </div>
                                 </td>
