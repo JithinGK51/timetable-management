@@ -133,6 +133,7 @@ function generateSectionDayTimetable($institutionId, $classId, $sectionId, $dayO
     
     $timetableEntries = [];
     $teacherSlotUsage = []; // Track which slots teachers are assigned to on this day
+    $teacherDailyLoad = []; // Track daily load per teacher for this day
     
     // Sort subjects by priority (those with fewer eligible teachers first)
     usort($subjects, function($a, $b) use ($teachers, $teacherSubjects) {
@@ -160,9 +161,12 @@ function generateSectionDayTimetable($institutionId, $classId, $sectionId, $dayO
         }
     }
     
+    // Shuffle time slots for better distribution
+    $timeSlotsArray = array_values($timeSlots);
+    shuffle($timeSlotsArray);
+    
     // Assign subjects to slots
     $slotIndex = 0;
-    $timeSlotsArray = array_values($timeSlots);
     
     foreach ($subjects as $subject) {
         $requiredPeriods = $subjectPeriods[$subject['id']] ?? 0;
@@ -183,9 +187,32 @@ function generateSectionDayTimetable($institutionId, $classId, $sectionId, $dayO
             return ['status' => 'error', 'message' => "No teacher available for subject: {$subject['name']}"];
         }
         
-        // Assign to available slots
-        while ($assignedCount < $requiredPeriods && $slotIndex < count($timeSlotsArray)) {
+        // Try to assign periods with multiple attempts
+        $attempts = 0;
+        $maxAttempts = $availableSlots * 2;
+        
+        while ($assignedCount < $requiredPeriods && $attempts < $maxAttempts) {
+            $attempts++;
+            
+            if ($slotIndex >= count($timeSlotsArray)) {
+                break;
+            }
+            
             $slot = $timeSlotsArray[$slotIndex];
+            
+            // Check if slot is already used
+            $slotUsed = false;
+            foreach ($timetableEntries as $entry) {
+                if ($entry['time_slot_id'] == $slot['id']) {
+                    $slotUsed = true;
+                    break;
+                }
+            }
+            
+            if ($slotUsed) {
+                $slotIndex++;
+                continue;
+            }
             
             // Find an available teacher for this slot
             shuffle($eligibleTeachers);
@@ -195,6 +222,12 @@ function generateSectionDayTimetable($institutionId, $classId, $sectionId, $dayO
                 // Check if teacher is already assigned to this slot on this day
                 if (isset($teacherSlotUsage[$teacher['id']]) && 
                     in_array($slot['id'], $teacherSlotUsage[$teacher['id']])) {
+                    continue;
+                }
+                
+                // Check teacher daily load
+                $currentLoad = $teacherDailyLoad[$teacher['id']] ?? 0;
+                if ($currentLoad >= $teacher['max_periods_per_day']) {
                     continue;
                 }
                 
@@ -217,6 +250,12 @@ function generateSectionDayTimetable($institutionId, $classId, $sectionId, $dayO
                     'subject_id' => $subject['id'],
                     'teacher_id' => $teacher['id']
                 ];
+                
+                // Update teacher daily load
+                if (!isset($teacherDailyLoad[$teacher['id']])) {
+                    $teacherDailyLoad[$teacher['id']] = 0;
+                }
+                $teacherDailyLoad[$teacher['id']]++;
                 
                 if (!isset($teacherSlotUsage[$teacher['id']])) {
                     $teacherSlotUsage[$teacher['id']] = [];
