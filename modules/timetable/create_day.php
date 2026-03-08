@@ -138,14 +138,22 @@ $daysOfWeek = [
             <div class="form-row">
                 <div class="form-group" style="flex: 2;">
                     <label class="form-label required">Sections (Select Multiple)</label>
-                    <select name="section_ids[]" id="section_id" class="form-control" multiple required <?php echo empty($sections) ? 'disabled' : ''; ?> style="min-height: 120px;">
-                        <?php foreach ($sections as $sec): ?>
-                            <option value="<?php echo $sec['id']; ?>" <?php echo in_array($sec['id'], (array)$sectionIds) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($sec['name']); ?> <?php echo $sec['room_number'] ? '(' . htmlspecialchars($sec['room_number']) . ')' : ''; ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <small style="color: var(--text-light);">Hold Ctrl/Cmd to select multiple sections</small>
+                    <div id="section_checkboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 15px; background: var(--bg-light); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                        <?php if (empty($sections)): ?>
+                            <p style="color: var(--text-light); margin: 0;">Please select a class first</p>
+                        <?php else: ?>
+                            <?php foreach ($sections as $sec): ?>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm); transition: background 0.2s;" onmouseover="this.style.background='var(--bg-white)'" onmouseout="this.style.background='transparent'">
+                                    <input type="checkbox" name="section_ids[]" value="<?php echo $sec['id']; ?>" <?php echo in_array($sec['id'], (array)$sectionIds) ? 'checked' : ''; ?> style="width: 18px; height: 18px; cursor: pointer;">
+                                    <span>
+                                        <?php echo htmlspecialchars($sec['name']); ?>
+                                        <?php echo $sec['room_number'] ? '<small style="color: var(--text-light);">(' . htmlspecialchars($sec['room_number']) . ')</small>' : ''; ?>
+                                    </span>
+                                </label>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                    <small style="color: var(--text-light);">Check the sections you want to generate timetables for</small>
                 </div>
                 
                 <div class="form-group">
@@ -181,13 +189,12 @@ $daysOfWeek = [
 <script>
 function loadClasses(institutionId) {
     const classSelect = document.getElementById('class_id');
-    const sectionSelect = document.getElementById('section_id');
+    const sectionCheckboxes = document.getElementById('section_checkboxes');
     
     if (!institutionId) {
         classSelect.innerHTML = '<option value="">Select Class</option>';
         classSelect.disabled = true;
-        sectionSelect.innerHTML = '';
-        sectionSelect.disabled = true;
+        sectionCheckboxes.innerHTML = '<p style="color: var(--text-light); margin: 0;">Please select a class first</p>';
         return;
     }
     
@@ -206,17 +213,15 @@ function loadClasses(institutionId) {
         
         classSelect.innerHTML = options;
         classSelect.disabled = false;
-        sectionSelect.innerHTML = '';
-        sectionSelect.disabled = true;
+        sectionCheckboxes.innerHTML = '<p style="color: var(--text-light); margin: 0;">Please select a class first</p>';
     });
 }
 
 function loadSections(classId) {
-    const sectionSelect = document.getElementById('section_id');
+    const sectionCheckboxes = document.getElementById('section_checkboxes');
     
     if (!classId) {
-        sectionSelect.innerHTML = '';
-        sectionSelect.disabled = true;
+        sectionCheckboxes.innerHTML = '<p style="color: var(--text-light); margin: 0;">Please select a class first</p>';
         return;
     }
     
@@ -226,16 +231,20 @@ function loadSections(classId) {
             return;
         }
         
-        let options = '';
-        if (Array.isArray(response)) {
+        let checkboxes = '';
+        if (Array.isArray(response) && response.length > 0) {
             response.forEach(function(sec) {
-                const roomInfo = sec.room_number ? ' (' + sec.room_number + ')' : '';
-                options += '<option value="' + sec.id + '">' + sec.name + roomInfo + '</option>';
+                const roomInfo = sec.room_number ? ' <small style="color: var(--text-light);">(' + sec.room_number + ')</small>' : '';
+                checkboxes += '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: var(--radius-sm); transition: background 0.2s;" onmouseover="this.style.background=\'var(--bg-white)\'" onmouseout="this.style.background=\'transparent\'">';
+                checkboxes += '<input type="checkbox" name="section_ids[]" value="' + sec.id + '" style="width: 18px; height: 18px; cursor: pointer;">';
+                checkboxes += '<span>' + sec.name + roomInfo + '</span>';
+                checkboxes += '</label>';
             });
+        } else {
+            checkboxes = '<p style="color: var(--text-light); margin: 0;">No sections found for this class</p>';
         }
         
-        sectionSelect.innerHTML = options;
-        sectionSelect.disabled = false;
+        sectionCheckboxes.innerHTML = checkboxes;
     });
 }
 </script>
