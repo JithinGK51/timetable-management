@@ -91,6 +91,10 @@ $alert = getAlert();
                     <i class="fas fa-plus-circle"></i>
                     <span>Create Timetable</span>
                 </a>
+                <a href="/ttc/modules/timetable/create_day.php" class="menu-item <?php echo $currentPage === 'timetable' && $currentFile === 'create_day' ? 'active' : ''; ?>">
+                    <i class="fas fa-calendar-day"></i>
+                    <span>Single Day</span>
+                </a>
                 <a href="/ttc/modules/timetable/index.php" class="menu-item <?php echo $currentPage === 'timetable' && $currentFile === 'index' ? 'active' : ''; ?>">
                     <i class="fas fa-calendar-alt"></i>
                     <span>View Timetables</span>
