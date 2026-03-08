@@ -394,54 +394,102 @@ function loadSections(classId) {
     </div>
 </div>
 
-<?php elseif ($step === 3): ?>
+<?php elseif ($step === 3): 
+    $results = $_SESSION['day_timetable_results'] ?? [];
+    
+    // Get time slots for display
+    $timeSlots = [];
+    $institutionId = $_SESSION['day_timetable_institution'] ?? 0;
+    if ($institutionId) {
+        $timeSlots = getTimeSlotsByInstitution($institutionId);
+        $timeSlots = array_filter($timeSlots, function($s) { return !$s['is_break'] && !$s['is_lunch']; });
+    }
+?>
 
 <div class="card">
     <div class="card-header">
         <h3 class="card-title">Step 3: Generation Results</h3>
     </div>
     <div class="card-body">
-        <?php
-        $results = $_SESSION['day_timetable_results'] ?? [];
-        
-        if (empty($results)): 
-        ?>
+        <?php if (empty($results)): ?>
             <div class="alert alert-warning">
                 <i class="fas fa-exclamation-triangle"></i> No timetables were generated.
             </div>
         <?php else: ?>
             <div class="alert alert-success" style="margin-bottom: 30px;">
                 <i class="fas fa-check-circle"></i> 
-                Successfully generated <?php echo count($results); ?> timetable(s) for <?php echo ucfirst($dayOfWeek); ?>!
+                Successfully generated <?php echo count($results); ?> timetable(s) for <strong><?php echo ucfirst($dayOfWeek); ?></strong>!
             </div>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                <?php foreach ($results as $result): 
-                    $timetable = getTimetableById($result['timetable_id']);
-                    $section = dbFetch("SELECT * FROM sections WHERE id = ?", [$result['section_id']]);
-                ?>
-                    <div style="background: var(--bg-light); padding: 20px; border-radius: var(--radius-md); border-left: 4px solid var(--success-color);">
-                        <h5 style="margin-bottom: 10px;">
-                            <i class="fas fa-calendar-check"></i> 
+            <?php foreach ($results as $result): 
+                $timetable = getTimetableById($result['timetable_id']);
+                $section = dbFetch("SELECT * FROM sections WHERE id = ?", [$result['section_id']]);
+                $entries = getTimetableEntries($result['timetable_id']);
+                
+                // Build entries lookup
+                $entryLookup = [];
+                foreach ($entries as $entry) {
+                    $key = $entry['time_slot_id'];
+                    $entryLookup[$key] = $entry;
+                }
+            ?>
+                <div style="background: var(--bg-light); padding: 20px; border-radius: var(--radius-md); margin-bottom: 30px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h4 style="margin: 0;">
+                            <i class="fas fa-calendar-check" style="color: var(--success-color);"></i> 
                             <?php echo htmlspecialchars($section['name'] ?? 'Unknown Section'); ?>
-                        </h5>
-                        <p style="margin-bottom: 5px;">
-                            <small style="color: var(--text-light);">Timetable ID:</small> 
-                            #<?php echo $result['timetable_id']; ?>
-                        </p>
-                        <p style="margin-bottom: 5px;">
-                            <small style="color: var(--text-light);">Entries:</small> 
-                            <?php echo count($result['timetable'] ?? []); ?> periods
-                        </p>
-                        <p style="margin-bottom: 15px;">
+                            <?php echo $section['room_number'] ? '<small style="color: var(--text-light);">(' . htmlspecialchars($section['room_number']) . ')</small>' : ''; ?>
+                        </h4>
+                        <div style="display: flex; gap: 10px;">
                             <span class="badge badge-success">Draft</span>
-                        </p>
-                        <a href="grid.php?id=<?php echo $result['timetable_id']; ?>" class="btn btn-primary btn-sm">
-                            <i class="fas fa-eye"></i> View & Edit
-                        </a>
+                            <a href="grid.php?id=<?php echo $result['timetable_id']; ?>" class="btn btn-primary btn-sm">
+                                <i class="fas fa-edit"></i> Open in Grid
+                            </a>
+                        </div>
                     </div>
-                <?php endforeach; ?>
-            </div>
+                    
+                    <!-- Timetable Preview -->
+                    <div style="overflow-x: auto;">
+                        <table class="data-table" style="margin-bottom: 0;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 100px;">Period</th>
+                                    <th>Time</th>
+                                    <th>Subject</th>
+                                    <th>Teacher</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($timeSlots as $slot): 
+                                    $entry = $entryLookup[$slot['id']] ?? null;
+                                ?>
+                                    <tr>
+                                        <td><strong>Period <?php echo $slot['period_number']; ?></strong></td>
+                                        <td><?php echo formatTime($slot['start_time']); ?> - <?php echo formatTime($slot['end_time']); ?></td>
+                                        <td>
+                                            <?php if ($entry && $entry['subject_name']): ?>
+                                                <span style="color: var(--primary-color); font-weight: 600;">
+                                                    <?php echo htmlspecialchars($entry['subject_name']); ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span style="color: var(--text-light);">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($entry && $entry['teacher_name']): ?>
+                                                <i class="fas fa-chalkboard-teacher" style="color: var(--text-light);"></i>
+                                                <?php echo htmlspecialchars($entry['teacher_name']); ?>
+                                            <?php else: ?>
+                                                <span style="color: var(--text-light);">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         <?php endif; ?>
         
         <div class="form-group" style="margin-top: 30px;">
