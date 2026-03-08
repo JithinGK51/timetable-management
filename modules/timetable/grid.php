@@ -155,6 +155,9 @@ $canEdit = hasPermission('timetable', 'edit') && $timetable['status'] !== 'publi
         <a href="index.php" class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> Back
         </a>
+        <button class="btn btn-info" onclick="saveTimetableAsImage()">
+            <i class="fas fa-image"></i> Save as Image
+        </button>
         <button class="btn btn-success" onclick="window.print()">
             <i class="fas fa-print"></i> Print
         </button>
@@ -162,9 +165,9 @@ $canEdit = hasPermission('timetable', 'edit') && $timetable['status'] !== 'publi
 </div>
 
 <!-- Timetable Grid -->
-<div class="card">
-    <div class="card-body" style="overflow-x: auto;">
-        <table class="data-table" style="min-width: 800px;">
+<div class="card" id="timetableGridCard">
+    <div class="card-body" style="overflow-x: auto;" id="timetableGridContainer">
+        <table class="data-table" style="min-width: 800px;" id="timetableTable">
             <thead>
                 <tr>
                     <th style="width: 100px;">Day / Period</th>
@@ -584,5 +587,109 @@ function saveEntry() {
 }
 </script>
 <?php endif; ?>
+
+<!-- Save as Image functionality -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function saveTimetableAsImage() {
+    const gridCard = document.getElementById('timetableGridCard');
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    
+    // Show loading state
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    btn.disabled = true;
+    
+    // Add temporary title for the image
+    const titleDiv = document.createElement('div');
+    titleDiv.id = 'tempTimetableTitle';
+    titleDiv.style.cssText = 'padding: 20px; background: white; border-bottom: 2px solid #667eea; text-align: center;';
+    titleDiv.innerHTML = `
+        <h2 style="margin: 0; color: #2d3748; font-size: 24px;"><?php echo htmlspecialchars($timetable['institution_name']); ?></h2>
+        <p style="margin: 5px 0 0 0; color: #718096; font-size: 16px;">
+            <?php echo htmlspecialchars($timetable['class_name'] . ' - ' . $timetable['section_name']); ?> | 
+            Academic Year: <?php echo htmlspecialchars($timetable['academic_year']); ?>
+        </p>
+        <p style="margin: 5px 0 0 0; color: #a0aec0; font-size: 12px;">
+            Generated on: ${new Date().toLocaleDateString()}
+        </p>
+    `;
+    gridCard.insertBefore(titleDiv, gridCard.firstChild);
+    
+    // Configure html2canvas options
+    const options = {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: gridCard.scrollWidth,
+        width: gridCard.scrollWidth,
+        height: gridCard.scrollHeight
+    };
+    
+    html2canvas(gridCard, options).then(canvas => {
+        // Remove temporary title
+        const tempTitle = document.getElementById('tempTimetableTitle');
+        if (tempTitle) {
+            tempTitle.remove();
+        }
+        
+        // Create download link
+        const link = document.createElement('a');
+        const filename = `Timetable_${<?php echo json_encode(str_replace(' ', '_', $timetable['class_name'] . '_' . $timetable['section_name'])); ?>}_${new Date().toISOString().split('T')[0]}.png`;
+        link.download = filename;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        
+        // Show success notification
+        showNotification('Timetable saved as image successfully!', 'success');
+        
+        // Restore button
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }).catch(error => {
+        // Remove temporary title on error
+        const tempTitle = document.getElementById('tempTimetableTitle');
+        if (tempTitle) {
+            tempTitle.remove();
+        }
+        
+        console.error('Error saving timetable:', error);
+        showNotification('Error saving timetable. Please try again.', 'danger');
+        
+        // Restore button
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
+// Notification function
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type}`;
+    notification.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999; min-width: 300px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); animation: slideIn 0.3s ease;';
+    notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+    
+    // Add animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        notification.style.transition = 'all 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+</script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
